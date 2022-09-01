@@ -1,0 +1,2 @@
+
+    return encrypt(message, -num)
