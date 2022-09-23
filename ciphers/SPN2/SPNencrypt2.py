@@ -10,9 +10,9 @@ def generate_key_schedule(secret_key, num_subkeys):  # 32-bit secret key
     key_schedule = []
 
     for _ in range(num_subkeys):
-        ki = secret_key % (2 ** 16)
+        ki = secret_key % (2^16)
         key_schedule.insert(0, ki)
-        secret_key = secret_key >> 4
+        secret_key >>= 4    # shift bits to the right 4 places
 
     return key_schedule     # list w/ five 16-bit subkeys
 
@@ -31,7 +31,7 @@ def substitution(s_box, bytes):    # ur: 16-bit String
         uri = bytes % (2^4)   # bytes mod 2^4 (16)
         vri = s_box[uri]
         substituted_bytes += (vri << (4 * i))
-        bytes = bytes >> 4
+        bytes >>= 4     # shift bits to the right 4 places
 
     print(type(substituted_bytes))
     return substituted_bytes   # substituted bytes
@@ -47,8 +47,8 @@ def permutation(p_box, vr):
     wr = 0
     for i in range(len(p_box), 0, -1):
         vri = vr % 2
-        vr = vr >> 1
-        wr = wr + (vri << (len(p_box) - p_box[i-1]))
+        vr >>= 1    # shift bits right 1 place
+        wr += (vri << (len(p_box) - p_box[i-1]))
     return wr
 
 
