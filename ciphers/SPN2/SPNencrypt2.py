@@ -17,19 +17,24 @@ def generate_key_schedule(secret_key, num_subkeys):  # 32-bit secret key
     return key_schedule     # list w/ five 16-bit subkeys
 
 
-def substitution(s_box, ur):    # ur: 16-bit String
+def substitution(s_box, bytes):    # ur: 16-bit String
+    # bytes are taken from key schedule
     """
     Packet substitution operation
     Param s_box:S box parameter
-    Paramur: Input Bit String, 16 Bits
+    Paramer ur: Input Bit String, 16 Bits
     """
-    vr = 0
+    
+
+    substituted_bytes = 0
     for i in range(4):
-        uri = ur % (2 ** 4)
+        uri = bytes % (2^4)   # bytes mod 2^4 (16)
         vri = s_box[uri]
-        vr = vr + (vri << (4 * i))
-        ur = ur >> 4
-    return vr   # 16-bit String
+        substituted_bytes += (vri << (4 * i))
+        bytes = bytes >> 4
+
+    print(type(substituted_bytes))
+    return substituted_bytes   # substituted bytes
 
 
 def permutation(p_box, vr):
@@ -43,7 +48,7 @@ def permutation(p_box, vr):
     for i in range(len(p_box), 0, -1):
         vri = vr % 2
         vr = vr >> 1
-        wr = wr + (vri << (16 - p_box[i-1]))
+        wr = wr + (vri << (len(p_box) - p_box[i-1]))
     return wr
 
 
@@ -104,16 +109,22 @@ def decrypt(secret_key, encrypted_bits, num_subkeys):   # 32 bits, 16 bits
     key_schedule = generate_key_schedule(secret_key, num_subkeys)
     key_schedule.reverse()  # reverse key schedule
 
+    print(format(key_schedule[0], '016b'))
+
     # Secret key replacement
-    key_schedule[1] = permutation(P_Box, key_schedule[1])
-    key_schedule[2] = permutation(P_Box, key_schedule[2])
-    key_schedule[3] = permutation(P_Box, key_schedule[3])
+    for i in range(1, 4, 1):
+        key_schedule[i] = permutation(P_Box, key_schedule[i])
+    # key_schedule[1] = permutation(P_Box, key_schedule[1])
+    # key_schedule[2] = permutation(P_Box, key_schedule[2])
+    # key_schedule[3] = permutation(P_Box, key_schedule[3])
 
     # 16-bit plaintext
     return SPN(encrypted_bits, reverse_s_box(S_Box), reverse_p_box(P_Box), key_schedule)
 
+
 def decode_binary_string(s):
-    return ''.join(chr(int(s[i*8:i*8+8],2)) for i in range(len(s)//8))
+    return ''.join(chr(int(s[i*8:i*8+8], 2)) for i in range(len(s)//8))
+
 
 def add_byte_spaces(str, byte_size):
     output_str = ''
@@ -141,21 +152,14 @@ if __name__ == '__main__':
     encrypted_text = encrypt(SECRET_KEY, PLAIN_TEXT, NUM_SUBKEYS)
     encrypted_text_str = format(encrypted_text, '016b')
 
-    decrypted_text_str = format(
-        decrypt(SECRET_KEY, encrypted_text, NUM_SUBKEYS), '016b')
+    decrypted_text_str = format(decrypt(SECRET_KEY, encrypted_text, NUM_SUBKEYS), '016b')
 
-    print(
-        f'Initial text:      {add_byte_spaces(plain_text_str, 8)}')
+    print(f'Initial text:      {add_byte_spaces(plain_text_str, 8)}')
+    print(f'Encrypted text:    {add_byte_spaces(encrypted_text_str, 8)}')
+    print(f'Decrypted text:    {add_byte_spaces(decrypted_text_str, 8)}')
 
-    print(
-        f'Encrypted text:    {add_byte_spaces(encrypted_text_str, 8)}')
-    print(
-        f'Decrypted text:    {add_byte_spaces(decrypted_text_str, 8)}')
-
-    print(
-        f'Initial text == Decrypted text: {plain_text_str == decrypted_text_str}')
+    print(f'Initial text == Decrypted text: {plain_text_str == decrypted_text_str}')
 
     print(decode_binary_string(decrypted_text_str))
-    
 
     # assert decrypt(SECRET_KEY, encrypt(SECRET_KEY, PLAIN_TEXT)) == PLAIN_TEXT
