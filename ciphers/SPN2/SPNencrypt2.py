@@ -1,6 +1,6 @@
 # Parameters of S box
 from base64 import decode
-import time
+import timeit
 
 
 S_Box = [14, 4, 13, 1, 2, 15, 11, 8, 3, 10, 6, 12, 5, 9, 0, 7]
@@ -104,16 +104,18 @@ def decrypt(secret_key, encrypted_bits, num_subkeys):   # 32 bits, 16 bits
 
 
 def text_to_bits(text):
-    encoding='utf-8'
-    errors='surrogatepass'
+    encoding = 'utf-8'
+    errors = 'surrogatepass'
     bits = bin(int.from_bytes(text.encode(encoding, errors), 'big'))[2:]
     return bits.zfill(8 * ((len(bits) + 7) // 8))
 
+
 def text_from_bits(bits):
-    encoding='utf-8'
-    errors='surrogatepass'
+    encoding = 'utf-8'
+    errors = 'surrogatepass'
     n = int(bits, 2)
     return n.to_bytes((n.bit_length() + 7) // 8, 'big').decode(encoding, errors) or '\0'
+
 
 def add_byte_spaces(str, byte_size):
     # add spaces to bytes for readability
@@ -128,12 +130,15 @@ def add_byte_spaces(str, byte_size):
 
     return output_str[1:]  # return all except first space
 
+
 def decode_binary_string(s):
-    return ''.join(chr(int(s[i*8:i*8+8],2)) for i in range(len(s)//8))
+    return ''.join(chr(int(s[i*8:i*8+8], 2)) for i in range(len(s)//8))
+
 
 def toAscii(letter):
     number = ord(letter)
     return number
+
 
 def loopThrough(message):
     for n in message:
@@ -141,27 +146,37 @@ def loopThrough(message):
         print(toAscii(n))
         print('{0:b}\n'.format(toAscii(n)))
 
+
 if __name__ == '__main__':
     SECRET_KEY = 0b00111010100101001101011000111111     # 32 bits
     NUM_SUBKEYS = 5
 
-    string = 'this isn\'t a piece of text'
-    # result = ' '.join(format(ord(i),'b') for i in string)
-    result = [format(ord(string[i]), '08b') + format(ord(string[i+1]), '08b') for i in range(0, len(string), 2)]
+    plaintext = """
+    Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum.
+    """
+
+    result = [format(ord(plaintext[i]), '08b') + format(ord(plaintext[i+1]), '08b')
+              for i in range(0, len(plaintext), 2)]
+
     result_in_binary = [int(i, 2) for i in result]
 
-    start = time.time()
-    encrypted_result = [encrypt(SECRET_KEY, i, NUM_SUBKEYS) for i in result_in_binary]
-    end = time.time()
-    print('Encryption time:', "{0:.15f}".format(end - start))
+    # Encrypt data
+    start1 = timeit.default_timer() # start timer
+    encrypted_result = [encrypt(SECRET_KEY, i, NUM_SUBKEYS)
+                        for i in result_in_binary]
+    end1 = timeit.default_timer() # start timer
+    encryption_time = '{0:.4f}'.format((end1 - start1)*1000)
 
+    # Decrypt data
+    start = timeit.default_timer() # start timer
+    decrypted_result = [decrypt(SECRET_KEY, i, NUM_SUBKEYS)
+                        for i in encrypted_result]
+    end = timeit.default_timer() # stop timer
+    decryption_time = '{0:.4f}'.format((end - start)*1000)
 
-    start = time.time()
-    decrypted_result = [decrypt(SECRET_KEY, i, NUM_SUBKEYS) for i in encrypted_result]
-    end = time.time()
-    print('Decryption time:', "{0:.15f}".format(end - start))
-
-    final_text = (''.join(text_from_bits(format(i, '016b')) for i in decrypted_result))
-    print(final_text)
-
+    final_text = ''.join(text_from_bits(format(i, '016b'))
+                         for i in decrypted_result)
     
+    print(final_text)
+    print('Encryption time:', encryption_time, 'ms')
+    print('Decryption time:', decryption_time, 'ms')
