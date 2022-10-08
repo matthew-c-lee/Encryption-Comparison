@@ -1,5 +1,6 @@
 # Parameters of S box
 from base64 import decode
+import time
 
 
 S_Box = [14, 4, 13, 1, 2, 15, 11, 8, 3, 10, 6, 12, 5, 9, 0, 7]
@@ -130,69 +131,37 @@ def add_byte_spaces(str, byte_size):
 def decode_binary_string(s):
     return ''.join(chr(int(s[i*8:i*8+8],2)) for i in range(len(s)//8))
 
+def toAscii(letter):
+    number = ord(letter)
+    return number
+
+def loopThrough(message):
+    for n in message:
+        print(n)
+        print(toAscii(n))
+        print('{0:b}\n'.format(toAscii(n)))
 
 if __name__ == '__main__':
     SECRET_KEY = 0b00111010100101001101011000111111     # 32 bits
     NUM_SUBKEYS = 5
+
+    string = 'this isn\'t a piece of text'
+    # result = ' '.join(format(ord(i),'b') for i in string)
+    result = [format(ord(string[i]), '08b') + format(ord(string[i+1]), '08b') for i in range(0, len(string), 2)]
+    result_in_binary = [int(i, 2) for i in result]
+
+    start = time.time()
+    encrypted_result = [encrypt(SECRET_KEY, i, NUM_SUBKEYS) for i in result_in_binary]
+    end = time.time()
+    print('Encryption time:', "{0:.15f}".format(end - start))
+
+
+    start = time.time()
+    decrypted_result = [decrypt(SECRET_KEY, i, NUM_SUBKEYS) for i in encrypted_result]
+    end = time.time()
+    print('Decryption time:', "{0:.15f}".format(end - start))
+
+    final_text = (''.join(text_from_bits(format(i, '016b')) for i in decrypted_result))
+    print(final_text)
+
     
-    PLAIN_TEXT = 0b0110100001101001     # 16 bits (message says "hi")
-
-    encrypted_text = encrypt(SECRET_KEY, PLAIN_TEXT, NUM_SUBKEYS)
-    encrypted_text_str = format(encrypted_text, '016b')
-
-    decrypted_text_str = format(
-        decrypt(SECRET_KEY, encrypted_text, NUM_SUBKEYS), '016b')
-
-    plain_text_str = format(PLAIN_TEXT, '016b')
-
-    print(f'Initial text:      {add_byte_spaces(plain_text_str, 8)}')
-    print(f'Encrypted text:    {add_byte_spaces(encrypted_text_str, 8)}')
-    print(f'Decrypted text:    {add_byte_spaces(decrypted_text_str, 8)}')
-
-    print(
-        f'Initial text == Decrypted text: {plain_text_str == decrypted_text_str}')
-
-    print(text_from_bits(decrypted_text_str))
-
-    message = "hey bitchhhhh"
-
-
-
-    msg_in_binary = text_to_bits(message)
-
-    # print(msg_in_binary)
-    print(text_from_bits(msg_in_binary))
-
-    n = 16
-    message_parts = [msg_in_binary[i:i+n] for i in range(0, len(msg_in_binary), n)]
-
-    # print(message_parts)
-
-    # initialize encrypted list
-    encrypted_list = []
-    # decrypting text
-    for i, part in enumerate(message_parts):
-        part = int(part)
-        encrypted_bits = encrypt(SECRET_KEY, part, NUM_SUBKEYS)
-        encrypted_list.append(encrypted_bits)
-
-    decrypted_list = []
-    for i, part in enumerate(encrypted_list):
-        decrypted_bits = decrypt(SECRET_KEY, part, NUM_SUBKEYS)
-        decrypted_list.append(decrypted_bits)
-
-    decrypted_message = ''
-    # verify that it's the same message
-    for i, part in enumerate(decrypted_list):
-        # decrypted_list[i] = bin(part)[2:]
-        pass
-
-        # decrypted_message += text_from_bits(bin(part)[2:])
-
-
-    print(message_parts)
-    print(encrypted_list)
-    print(decrypted_list)
-    # print(decrypted_message)
-
-    # assert decrypt(SECRET_KEY, encrypt(SECRET_KEY, PLAIN_TEXT)) == PLAIN_TEXT
