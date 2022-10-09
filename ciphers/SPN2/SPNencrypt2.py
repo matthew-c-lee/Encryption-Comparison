@@ -1,8 +1,7 @@
+import timeit # used to measure timings
+
+
 # Parameters of S box
-from base64 import decode
-import timeit
-
-
 S_Box = [14, 4, 13, 1, 2, 15, 11, 8, 3, 10, 6, 12, 5, 9, 0, 7]
 
 # Parameters of P box
@@ -16,7 +15,8 @@ def generate_key_schedule(secret_key, num_subkeys):  # 32-bit secret key
     for _ in range(num_subkeys):
         ki = secret_key % (2 ^ 16)
         key_schedule.insert(0, ki)
-        secret_key >>= 4    # shift bits to the right 4 places
+        print(key_schedule)
+        secret_key >>= 4    # remove 4 bits from the end
 
     return key_schedule     # list w/ five 16-bit subkeys
 
@@ -24,7 +24,6 @@ def generate_key_schedule(secret_key, num_subkeys):  # 32-bit secret key
 def substitution(s_box, bytes):    # bytes: 16-bit String
     # Packet substitution operation
     # bytes are taken from key schedule
-    # print(len(format(bytes, '016b')))
 
     substituted_bytes = 0
     for i in range(4):
@@ -72,24 +71,25 @@ def SPN(bits_to_encrypt, s_box, p_box, key_schedule):   # 16-bits
     for round in range(num_rounds):
         if round < num_rounds:  # runs every round except the last
             XORed_bits = permuted_bits ^ key_schedule[round]  # XOR operation
-            substituted_bits = substitution(
-                s_box, XORed_bits)  # packet substitution
+            substituted_bits = substitution(s_box, XORed_bits)  # packet substitution
 
-        permuted_bits = permutation(
-            p_box, substituted_bits)  # single bit permutation
+        permuted_bits = permutation(p_box, substituted_bits)  # single bit permutation
 
     key_schedule = substituted_bits ^ key_schedule[num_rounds]
     return key_schedule   # return key schedule w/ 5 16-bit subkeys
 
 
-def encrypt(secret_key, plain_bits, num_subkeys):   # 32 bits, 16 bits
+def encrypt(plain_bits, key_schedule):   # 32 bits, 16 bits
     # Encryption of 16-bit plaintext x based on secret key K
-    key_schedule = generate_key_schedule(secret_key, num_subkeys)
-    return SPN(plain_bits, S_Box, P_Box, key_schedule)      # 16-bit ciphertext
+    # key_schedule = generate_key_schedule(secret_key, num_subkeys)
+    ciphertext = SPN(plain_bits, S_Box, P_Box, key_schedule)
+
+    return ciphertext      # 16-bit ciphertext
 
 
+# def decrypt(encrypted_bits, key_schedule):   # 32 bits, 16 bits
 def decrypt(secret_key, encrypted_bits, num_subkeys):   # 32 bits, 16 bits
-    # The 16-bit encrypted_bits are decrypted according to the secret_key.
+#     The 16-bit encrypted_bits are decrypted according to the secret_key.
 
     key_schedule = generate_key_schedule(secret_key, num_subkeys)
     key_schedule.reverse()  # reverse key schedule
@@ -100,7 +100,8 @@ def decrypt(secret_key, encrypted_bits, num_subkeys):   # 32 bits, 16 bits
         key_schedule[i+1] = permutation(P_Box, key_schedule[i+1])
 
     # 16-bit plaintext
-    return SPN(encrypted_bits, reverse_s_box(S_Box), reverse_p_box(P_Box), key_schedule)
+    plaintext = SPN(encrypted_bits, reverse_s_box(S_Box), reverse_p_box(P_Box), key_schedule)
+    return plaintext
 
 
 def text_to_bits(text):
@@ -151,6 +152,8 @@ if __name__ == '__main__':
     SECRET_KEY = 0b00111010100101001101011000111111     # 32 bits
     NUM_SUBKEYS = 5
 
+    key_schedule = generate_key_schedule(SECRET_KEY, NUM_SUBKEYS)
+
     plaintext = """
     Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum.
     """
@@ -162,7 +165,7 @@ if __name__ == '__main__':
 
     # Encrypt data
     start1 = timeit.default_timer() # start timer
-    encrypted_result = [encrypt(SECRET_KEY, i, NUM_SUBKEYS)
+    encrypted_result = [encrypt(i, key_schedule)
                         for i in result_in_binary]
     end1 = timeit.default_timer() # start timer
     encryption_time = '{0:.4f}'.format((end1 - start1)*1000)
@@ -171,8 +174,16 @@ if __name__ == '__main__':
     start = timeit.default_timer() # start timer
     decrypted_result = [decrypt(SECRET_KEY, i, NUM_SUBKEYS)
                         for i in encrypted_result]
+
+
+    # key_schedule = generate_key_schedule(SECRET_KEY, NUM_SUBKEYS)
+    # decrypted_result = [decrypt(i, key_schedule)
+    #                     for i in encrypted_result]
+
     end = timeit.default_timer() # stop timer
     decryption_time = '{0:.4f}'.format((end - start)*1000)
+
+    print(decrypted_result)
 
     final_text = ''.join(text_from_bits(format(i, '016b'))
                          for i in decrypted_result)
