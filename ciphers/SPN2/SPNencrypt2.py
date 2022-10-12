@@ -10,12 +10,11 @@ P_Box = [1, 5, 9, 13, 2, 6, 10, 14, 3, 7, 11, 15, 4, 8, 12, 16]
 
 def generate_key_schedule(secret_key, num_subkeys):  # 32-bit secret key
     # Secret key arrangement algorithm
-    key_schedule = []
+    key_schedule = [None] * num_subkeys
 
-    for _ in range(num_subkeys):
-        ki = secret_key % (2 ^ 16)
-        key_schedule.insert(0, ki)
-        print(key_schedule)
+    for i in range(num_subkeys, 0, -1):
+        subkey = secret_key % 12
+        key_schedule[i-1] = subkey # assign 
         secret_key >>= 4    # remove 4 bits from the end
 
     return key_schedule     # list w/ five 16-bit subkeys
@@ -27,9 +26,9 @@ def substitution(s_box, bytes):    # bytes: 16-bit String
 
     substituted_bytes = 0
     for i in range(4):
-        bits_modded = bytes % (2**4)   # bytes mod 2^4 (16)
-        vri = s_box[bits_modded]
-        substituted_bytes += (vri << (4*i))
+        bits_modded = bytes % 16
+        s_box_square = s_box[bits_modded]
+        substituted_bytes += (s_box_square << (4*i))
         bytes >>= 4     # shift bits to the right 4 places
 
     return substituted_bytes   # substituted bytes
@@ -37,12 +36,12 @@ def substitution(s_box, bytes):    # bytes: 16-bit String
 
 def permutation(p_box, bits):  # bits: 16 bits
     # Single bit permutation operation
-    permutation_result = 0
+    permuted_bytes = 0
     for i in range(len(p_box), 0, -1):
         bits_mod_2 = bits % 2
         bits >>= 1    # shift bits right 1 place
-        permutation_result += (bits_mod_2 << (len(p_box) - p_box[i-1]))
-    return permutation_result   # 16 bits
+        permuted_bytes += (bits_mod_2 << (len(p_box) - p_box[i-1]))
+    return permuted_bytes   # 16 bits
 
 
 def reverse_s_box(s_box):
@@ -89,7 +88,7 @@ def encrypt(plain_bits, key_schedule):   # 32 bits, 16 bits
 
 # def decrypt(encrypted_bits, key_schedule):   # 32 bits, 16 bits
 def decrypt(secret_key, encrypted_bits, num_subkeys):   # 32 bits, 16 bits
-#     The 16-bit encrypted_bits are decrypted according to the secret_key.
+# The 16-bit encrypted_bits are decrypted according to the secret_key.
 
     key_schedule = generate_key_schedule(secret_key, num_subkeys)
     key_schedule.reverse()  # reverse key schedule
@@ -117,24 +116,8 @@ def text_from_bits(bits):
     n = int(bits, 2)
     return n.to_bytes((n.bit_length() + 7) // 8, 'big').decode(encoding, errors) or '\0'
 
-
-def add_byte_spaces(str, byte_size):
-    # add spaces to bytes for readability
-    output_str = ''
-
-    for i in range(len(str)):
-        # if it's divisible by byte size (typically 8)
-        if i % byte_size == 0:
-            output_str += ' '
-
-        output_str += str[i]
-
-    return output_str[1:]  # return all except first space
-
-
 def decode_binary_string(s):
     return ''.join(chr(int(s[i*8:i*8+8], 2)) for i in range(len(s)//8))
-
 
 def toAscii(letter):
     number = ord(letter)
@@ -155,7 +138,7 @@ if __name__ == '__main__':
     key_schedule = generate_key_schedule(SECRET_KEY, NUM_SUBKEYS)
 
     plaintext = """
-    Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum.
+    Lorem Ipsum is simply dummy text of the printing and typesetting industry.
     """
 
     result = [format(ord(plaintext[i]), '08b') + format(ord(plaintext[i+1]), '08b')
@@ -175,7 +158,6 @@ if __name__ == '__main__':
     decrypted_result = [decrypt(SECRET_KEY, i, NUM_SUBKEYS)
                         for i in encrypted_result]
 
-
     # key_schedule = generate_key_schedule(SECRET_KEY, NUM_SUBKEYS)
     # decrypted_result = [decrypt(i, key_schedule)
     #                     for i in encrypted_result]
@@ -183,7 +165,9 @@ if __name__ == '__main__':
     end = timeit.default_timer() # stop timer
     decryption_time = '{0:.4f}'.format((end - start)*1000)
 
-    print(decrypted_result)
+    print(f'Text: \n{result_in_binary}\n')
+    print(f'Encrypted Result: \n{encrypted_result}\n')
+    print(f'Decrypted Result: \n{decrypted_result}\n')
 
     final_text = ''.join(text_from_bits(format(i, '016b'))
                          for i in decrypted_result)
