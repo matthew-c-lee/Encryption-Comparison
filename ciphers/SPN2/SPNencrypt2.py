@@ -1,5 +1,5 @@
-import timeit # used to measure timings
-
+import timeit  # used to measure timings
+from scipy.spatial.distance import hamming
 
 # Parameters of S box
 S_Box = [14, 4, 13, 1, 2, 15, 11, 8, 3, 10, 6, 12, 5, 9, 0, 7]
@@ -14,7 +14,7 @@ def generate_key_schedule(secret_key, num_subkeys):  # 32-bit secret key
 
     for i in range(num_subkeys, 0, -1):
         subkey = secret_key % 12
-        key_schedule[i-1] = subkey # assign 
+        key_schedule[i-1] = subkey  # assign
         secret_key >>= 4    # remove 4 bits from the end
 
     return key_schedule     # list w/ five 16-bit subkeys
@@ -70,9 +70,11 @@ def SPN(bits_to_encrypt, s_box, p_box, key_schedule):   # 16-bits
     for round in range(num_rounds):
         if round < num_rounds:  # runs every round except the last
             XORed_bits = permuted_bits ^ key_schedule[round]  # XOR operation
-            substituted_bits = substitution(s_box, XORed_bits)  # packet substitution
+            substituted_bits = substitution(
+                s_box, XORed_bits)  # packet substitution
 
-        permuted_bits = permutation(p_box, substituted_bits)  # single bit permutation
+        permuted_bits = permutation(
+            p_box, substituted_bits)  # single bit permutation
 
     key_schedule = substituted_bits ^ key_schedule[num_rounds]
     return key_schedule   # return key schedule w/ 5 16-bit subkeys
@@ -88,7 +90,7 @@ def encrypt(plain_bits, key_schedule):   # 32 bits, 16 bits
 
 # def decrypt(encrypted_bits, key_schedule):   # 32 bits, 16 bits
 def decrypt(secret_key, encrypted_bits, num_subkeys):   # 32 bits, 16 bits
-# The 16-bit encrypted_bits are decrypted according to the secret_key.
+    # The 16-bit encrypted_bits are decrypted according to the secret_key.
 
     key_schedule = generate_key_schedule(secret_key, num_subkeys)
     key_schedule.reverse()  # reverse key schedule
@@ -99,7 +101,8 @@ def decrypt(secret_key, encrypted_bits, num_subkeys):   # 32 bits, 16 bits
         key_schedule[i+1] = permutation(P_Box, key_schedule[i+1])
 
     # 16-bit plaintext
-    plaintext = SPN(encrypted_bits, reverse_s_box(S_Box), reverse_p_box(P_Box), key_schedule)
+    plaintext = SPN(encrypted_bits, reverse_s_box(
+        S_Box), reverse_p_box(P_Box), key_schedule)
     return plaintext
 
 
@@ -116,8 +119,10 @@ def text_from_bits(bits):
     n = int(bits, 2)
     return n.to_bytes((n.bit_length() + 7) // 8, 'big').decode(encoding, errors) or '\0'
 
+
 def decode_binary_string(s):
     return ''.join(chr(int(s[i*8:i*8+8], 2)) for i in range(len(s)//8))
+
 
 def toAscii(letter):
     number = ord(letter)
@@ -131,47 +136,116 @@ def loopThrough(message):
         print('{0:b}\n'.format(toAscii(n)))
 
 
+def one_timing(key, num_subkeys, plaintext):
+    key_schedule = generate_key_schedule(key, num_subkeys)
+
+    message = [format(ord(plaintext[i]), '08b') + format(ord(plaintext[i+1]), '08b')
+               for i in range(0, len(plaintext), 2)]
+
+    message_in_binary = [int(i, 2) for i in message]
+
+    # Encrypt data
+    start1 = timeit.default_timer()  # start timer
+    encrypted_result = [encrypt(i, key_schedule)
+                        for i in message_in_binary]
+    end1 = timeit.default_timer()  # start timer
+    encryption_time = (end1 - start1)*1000
+
+    # Decrypt data
+    start = timeit.default_timer()  # start timer
+    decrypted_result = [decrypt(SECRET_KEY, i, NUM_SUBKEYS)
+                        for i in encrypted_result]
+    end = timeit.default_timer()  # stop timer
+    decryption_time = (end - start)*1000
+
+    final_text = ''.join(text_from_bits(format(i, '016b'))
+                         for i in decrypted_result)
+
+    return [encryption_time, decryption_time]
+
+def measure_all_timings(key, num_subkeys, n, message):
+    all_encryption_times = []
+    all_decryption_times = []
+
+    # n = 100000
+
+    for _ in range(n):
+        times = one_timing(key, num_subkeys, message)
+
+        all_encryption_times.append(times[0])
+        all_decryption_times.append(times[1])
+
+    encryption_average = sum(all_encryption_times) / len(all_encryption_times)
+    decryption_average = sum(all_decryption_times) / len(all_decryption_times)
+
+    return [encryption_average, decryption_average]
+
+def measure_hamming(key, num_subkeys, plaintext):
+    key_schedule = generate_key_schedule(key, num_subkeys)
+
+    message = [format(ord(plaintext[i]), '08b') + format(ord(plaintext[i+1]), '08b')
+               for i in range(0, len(plaintext), 2)]
+
+    message_in_binary = [int(i, 2) for i in message]
+
+    # Encrypt data
+    encrypted_result = [encrypt(i, key_schedule)
+                        for i in message_in_binary]
+
+    # Decrypt data
+    decrypted_result = [decrypt(SECRET_KEY, i, NUM_SUBKEYS)
+                        for i in encrypted_result]
+    
+    encrypted_bytes_string = ''.join(format(i, '016b')
+                               for i in encrypted_result)
+    decrypted_bytes_string = ''.join(format(i, '016b')
+                               for i in decrypted_result)
+    return hamming(list(encrypted_bytes_string), list(decrypted_bytes_string)) * 100
+
+def get_average_hamming(KEY, num_subkeys, message, n):
+    hamming_distances = []
+    for _ in range(n):
+        hamming_distance = measure_hamming(KEY, num_subkeys, message)
+        hamming_distances.append(hamming_distance)
+
+    return sum(hamming_distances) / len(hamming_distances)
+
 if __name__ == '__main__':
     SECRET_KEY = 0b00111010100101001101011000111111     # 32 bits
     NUM_SUBKEYS = 5
 
+    plaintext = 'Lorem Ipsum is simply dummy text of the printing and typesetting industry.'
+
     key_schedule = generate_key_schedule(SECRET_KEY, NUM_SUBKEYS)
 
-    plaintext = """
-    Lorem Ipsum is simply dummy text of the printing and typesetting industry.
-    """
+    message = [format(ord(plaintext[i]), '08b') + format(ord(plaintext[i+1]), '08b')
+               for i in range(0, len(plaintext), 2)]
 
-    result = [format(ord(plaintext[i]), '08b') + format(ord(plaintext[i+1]), '08b')
-              for i in range(0, len(plaintext), 2)]
-
-    result_in_binary = [int(i, 2) for i in result]
+    message_in_binary = [int(i, 2) for i in message]
 
     # Encrypt data
-    start1 = timeit.default_timer() # start timer
     encrypted_result = [encrypt(i, key_schedule)
-                        for i in result_in_binary]
-    end1 = timeit.default_timer() # start timer
-    encryption_time = '{0:.4f}'.format((end1 - start1)*1000)
+                        for i in message_in_binary]
 
     # Decrypt data
-    start = timeit.default_timer() # start timer
     decrypted_result = [decrypt(SECRET_KEY, i, NUM_SUBKEYS)
                         for i in encrypted_result]
 
-    # key_schedule = generate_key_schedule(SECRET_KEY, NUM_SUBKEYS)
-    # decrypted_result = [decrypt(i, key_schedule)
-    #                     for i in encrypted_result]
+    # Get string versions
+    encrypted_bytes_string = ''.join(format(i, '016b')
+                               for i in encrypted_result)
+    decrypted_bytes_string = ''.join(format(i, '016b')
+                               for i in decrypted_result)
 
-    end = timeit.default_timer() # stop timer
-    decryption_time = '{0:.4f}'.format((end - start)*1000)
-
-    print(f'Text: \n{result_in_binary}\n')
-    print(f'Encrypted Result: \n{encrypted_result}\n')
-    print(f'Decrypted Result: \n{decrypted_result}\n')
-
-    final_text = ''.join(text_from_bits(format(i, '016b'))
+    final_text = ''.join(text_from_bits(format(i, '16b'))
                          for i in decrypted_result)
-    
+
     print(final_text)
-    print('Encryption time:', encryption_time, 'ms')
-    print('Decryption time:', decryption_time, 'ms')
+
+    n = 10000
+
+    hamming_average = get_average_hamming(SECRET_KEY, NUM_SUBKEYS, plaintext, n)
+    encryption_average, decryption_average = measure_all_timings(SECRET_KEY, NUM_SUBKEYS, 10000, plaintext)
+    print('Average hamming distance:', hamming_average)
+    print('Average encryption time:', '{0:.4f}'.format(encryption_average))
+    print('Average decryption time:', '{0:.4f}'.format(decryption_average))
