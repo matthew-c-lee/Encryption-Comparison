@@ -23,7 +23,7 @@ def generate_key_schedule(secret_key, num_subkeys):  # 32-bit secret key
 def substitution(s_box, bytes):    # bytes: 16-bit String
     # Packet substitution operation
     # bytes are taken from key schedule
-    block_size = len(s_box) # s_box length is same as block length
+    block_size = len(s_box)  # s_box length is same as block length
 
     substituted_bytes = 0
     for i in range(0, block_size, 4):
@@ -44,25 +44,29 @@ def permutation(p_box, bytes):  # bits: 16 bits
     return permuted_bytes   # 16 bits
 
 
+# Returns inverse of S-Box
 def reverse_s_box(s_box):
-    # Returns inverse of S-Box
+    print('s box before\t', s_box)
     reversed_s_box = [None] * len(s_box)
+
     for i in range(len(s_box)):
         reversed_s_box[s_box[i]] = i
-
+        
+    print('s box after\t', reversed_s_box)
     return reversed_s_box
 
 
 def reverse_p_box(p_box):
+    print('p box before\t', p_box)
     # Finding the Inverse of P-Box
-    reversed_p_box = [None] * len(p_box)  # allocate memory
 
+    reversed_p_box = [None] * len(p_box)
     for i in range(len(p_box)):
-        reversed_p_box[p_box[i] - 1] = i + 1
-    # print(reversed_p_box)
-    # print(p_box.reverse())
-    # print(p_box)
-    return p_box       # Inverse of p-box
+        print(i)
+        reversed_p_box[p_box[i]] = i
+        
+    print('p box after\t', reversed_p_box)
+    return reversed_p_box
 
 
 def SPN(bits_to_encrypt, s_box, p_box, key_schedule):   # 16-bits
@@ -103,12 +107,8 @@ def decrypt(secret_key, encrypted_bits, num_subkeys):   # 32 bits, 16 bits
     for i in range(1, 4):
         key_schedule[i] = permutation(P_Box, key_schedule[i])
 
-    print(reverse_s_box(
-        S_Box))
-    print('normal', S_Box)
     # 16-bit plaintext
-    plaintext = SPN(encrypted_bits, reverse_s_box(
-        S_Box), reverse_p_box(P_Box), key_schedule)
+    plaintext = SPN(encrypted_bits, reverse_s_box(S_Box), reverse_p_box(P_Box), key_schedule)
     return plaintext
 
 
@@ -169,6 +169,7 @@ def one_timing(key, num_subkeys, plaintext):
 
     return [encryption_time, decryption_time]
 
+
 def measure_all_timings(key, num_subkeys, n, message):
     all_encryption_times = []
     all_decryption_times = []
@@ -186,6 +187,7 @@ def measure_all_timings(key, num_subkeys, n, message):
 
     return [encryption_average, decryption_average]
 
+
 def measure_hamming(key, num_subkeys, plaintext):
     key_schedule = generate_key_schedule(key, num_subkeys)
 
@@ -201,12 +203,13 @@ def measure_hamming(key, num_subkeys, plaintext):
     # Decrypt data
     decrypted_result = [decrypt(SECRET_KEY, i, NUM_SUBKEYS)
                         for i in encrypted_result]
-    
+
     encrypted_bytes_string = ''.join(format(i, '016b')
-                               for i in encrypted_result)
+                                     for i in encrypted_result)
     decrypted_bytes_string = ''.join(format(i, '016b')
-                               for i in decrypted_result)
+                                     for i in decrypted_result)
     return hamming(list(encrypted_bytes_string), list(decrypted_bytes_string)) * 100
+
 
 def get_average_hamming(KEY, num_subkeys, message, n):
     hamming_distances = []
@@ -215,6 +218,7 @@ def get_average_hamming(KEY, num_subkeys, message, n):
         hamming_distances.append(hamming_distance)
 
     return sum(hamming_distances) / len(hamming_distances)
+
 
 if __name__ == '__main__':
     SECRET_KEY = 0b00111010100101001101011000111111     # 32 bits
@@ -239,9 +243,9 @@ if __name__ == '__main__':
 
     # Get string versions
     encrypted_bytes_string = ''.join(format(i, '016b')
-                               for i in encrypted_result)
+                                     for i in encrypted_result)
     decrypted_bytes_string = ''.join(format(i, '016b')
-                               for i in decrypted_result)
+                                     for i in decrypted_result)
 
     final_text = ''.join(text_from_bits(format(i, '16b'))
                          for i in decrypted_result)
@@ -250,8 +254,10 @@ if __name__ == '__main__':
 
     n = 10000
 
-    hamming_average = get_average_hamming(SECRET_KEY, NUM_SUBKEYS, plaintext, n)
-    encryption_average, decryption_average = measure_all_timings(SECRET_KEY, NUM_SUBKEYS, n, plaintext)
+    hamming_average = get_average_hamming(
+        SECRET_KEY, NUM_SUBKEYS, plaintext, n)
+    encryption_average, decryption_average = measure_all_timings(
+        SECRET_KEY, NUM_SUBKEYS, n, plaintext)
     print('Average hamming distance:', hamming_average)
     print('Average encryption time:', '{0:.4f}'.format(encryption_average))
     print('Average decryption time:', '{0:.4f}'.format(decryption_average))
