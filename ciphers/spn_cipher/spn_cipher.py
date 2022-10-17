@@ -23,24 +23,24 @@ def generate_key_schedule(secret_key, num_subkeys):  # 32-bit secret key
 def substitution(s_box, bytes):    # bytes: 16-bit String
     # Packet substitution operation
     # bytes are taken from key schedule
+    block_size = len(s_box) # s_box length is same as block length
 
     substituted_bytes = 0
-    for i in range(4):
-        bits_modded = bytes % 16
-        s_box_square = s_box[bits_modded]
-        substituted_bytes += (s_box_square << (4*i))
+    for i in range(0, block_size, 4):
+        substituted_bytes += s_box[bytes % block_size] << i
         bytes >>= 4     # shift bits to the right 4 places
 
     return substituted_bytes   # substituted bytes
 
 
-def permutation(p_box, bits):  # bits: 16 bits
+def permutation(p_box, bytes):  # bits: 16 bits
     # Single bit permutation operation
+    block_size = len(p_box)  # block size is same as p_box
+
     permuted_bytes = 0
-    for i in range(len(p_box), 0, -1):
-        bits_mod_2 = bits % 2
-        bits >>= 1    # shift bits right 1 place
-        permuted_bytes += (bits_mod_2 << (len(p_box) - p_box[i-1]))
+    for i in range(block_size - 1, -1, -1):
+        permuted_bytes += (bytes % 2) << (block_size - p_box[i])
+        bytes >>= 1    # shift bits right 1 place
     return permuted_bytes   # 16 bits
 
 
@@ -59,7 +59,10 @@ def reverse_p_box(p_box):
 
     for i in range(len(p_box)):
         reversed_p_box[p_box[i] - 1] = i + 1
-    return reversed_p_box       # Inverse of p-box
+    # print(reversed_p_box)
+    # print(p_box.reverse())
+    # print(p_box)
+    return p_box       # Inverse of p-box
 
 
 def SPN(bits_to_encrypt, s_box, p_box, key_schedule):   # 16-bits
@@ -67,17 +70,17 @@ def SPN(bits_to_encrypt, s_box, p_box, key_schedule):   # 16-bits
     num_rounds = len(key_schedule) - 1
 
     permuted_bits = bits_to_encrypt
-    for round in range(num_rounds):
-        if round < num_rounds:  # runs every round except the last
-            XORed_bits = permuted_bits ^ key_schedule[round]  # XOR operation
+    for i in range(num_rounds):
+        if i < num_rounds:  # runs every round except the last
+            XORed_bits = permuted_bits ^ key_schedule[i]  # XOR operation
             substituted_bits = substitution(
                 s_box, XORed_bits)  # packet substitution
 
         permuted_bits = permutation(
             p_box, substituted_bits)  # single bit permutation
 
-    key_schedule = substituted_bits ^ key_schedule[num_rounds]
-    return key_schedule   # return key schedule w/ 5 16-bit subkeys
+    transformed_bits = substituted_bits ^ key_schedule[num_rounds]
+    return transformed_bits   # return key schedule w/ 5 16-bit subkeys
 
 
 def encrypt(plain_bits, key_schedule):   # 32 bits, 16 bits
@@ -97,9 +100,12 @@ def decrypt(secret_key, encrypted_bits, num_subkeys):   # 32 bits, 16 bits
 
     # Secret key replacement
     # i (1-3)
-    for i in range(3):
-        key_schedule[i+1] = permutation(P_Box, key_schedule[i+1])
+    for i in range(1, 4):
+        key_schedule[i] = permutation(P_Box, key_schedule[i])
 
+    print(reverse_s_box(
+        S_Box))
+    print('normal', S_Box)
     # 16-bit plaintext
     plaintext = SPN(encrypted_bits, reverse_s_box(
         S_Box), reverse_p_box(P_Box), key_schedule)
@@ -245,7 +251,7 @@ if __name__ == '__main__':
     n = 10000
 
     hamming_average = get_average_hamming(SECRET_KEY, NUM_SUBKEYS, plaintext, n)
-    encryption_average, decryption_average = measure_all_timings(SECRET_KEY, NUM_SUBKEYS, 10000, plaintext)
+    encryption_average, decryption_average = measure_all_timings(SECRET_KEY, NUM_SUBKEYS, n, plaintext)
     print('Average hamming distance:', hamming_average)
     print('Average encryption time:', '{0:.4f}'.format(encryption_average))
     print('Average decryption time:', '{0:.4f}'.format(decryption_average))
