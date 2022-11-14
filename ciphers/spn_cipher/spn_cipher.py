@@ -46,26 +46,21 @@ def permutation(p_box, bytes):  # bits: 16 bits
 
 # Returns inverse of S-Box
 def reverse_s_box(s_box):
-    print('s box before\t', s_box)
     reversed_s_box = [None] * len(s_box)
 
     for i in range(len(s_box)):
         reversed_s_box[s_box[i]] = i
         
-    print('s box after\t', reversed_s_box)
     return reversed_s_box
 
 
 def reverse_p_box(p_box):
-    print('p box before\t', p_box)
     # Finding the Inverse of P-Box
 
     reversed_p_box = [None] * len(p_box)
     for i in range(len(p_box)):
-        print(i)
-        reversed_p_box[p_box[i]] = i
+        reversed_p_box[p_box[i] - 1] = i + 1
         
-    print('p box after\t', reversed_p_box)
     return reversed_p_box
 
 

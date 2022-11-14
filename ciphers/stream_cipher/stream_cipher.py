@@ -106,7 +106,7 @@ def get_average_hamming(KEY, message, n):
 
 if __name__ == '__main__':
     KEY = 'wowzers'
-    message = 'Here is the message'
+    message = 'Lorem Ipsum is simply dummy text of the printing and typesetting industry.'
     
     encrypted_bytes = encrypt(KEY, message)
     decrypted_bytes = decrypt(KEY, encrypted_bytes)
