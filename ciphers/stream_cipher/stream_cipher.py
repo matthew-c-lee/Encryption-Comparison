@@ -1,5 +1,4 @@
 import random
-import timeit
 from scipy.spatial.distance import hamming
 
 def encrypt(key, message):

@@ -1,4 +1,3 @@
-import timeit  # used to measure timings
 from scipy.spatial.distance import hamming
 
 # Parameters of S box

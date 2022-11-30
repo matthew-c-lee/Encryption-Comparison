@@ -1,4 +1,5 @@
 from spn_cipher import *
+import timeit  # used to measure timings
 
 def one_timing(key, num_subkeys, plaintext):
     key_schedule = generate_key_schedule(key, num_subkeys)

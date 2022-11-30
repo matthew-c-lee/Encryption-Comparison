@@ -1,4 +1,5 @@
 from stream_cipher import *
+import timeit
 
 def one_timing(key, message):
     # calculate timing of encryption
